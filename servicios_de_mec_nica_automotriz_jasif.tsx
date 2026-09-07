@@ -40,6 +40,9 @@ export default function App() {
     }
   ]);
 
+  // Búsqueda en órdenes de trabajo
+  const [busquedaOrden, setBusquedaOrden] = useState('');
+
   // Modales y formularios
   const [showModalCliente, setShowModalCliente] = useState(false);
   const [showModalVehiculo, setShowModalVehiculo] = useState(false);
@@ -184,6 +187,18 @@ export default function App() {
   const calcularTotalOrden = (items) => {
     return items.reduce((acc, curr) => acc + (curr.cantidad * curr.precio), 0).toFixed(2);
   };
+
+  // Filtrado de órdenes
+  const ordenesFiltradas = ordenes.filter(o => {
+    const veh = vehiculos.find(v => v.id === o.vehiculoId);
+    const texto = busquedaOrden.toLowerCase();
+    return (
+      String(o.id).includes(texto) ||
+      o.mecanico.toLowerCase().includes(texto) ||
+      o.diagnostico.toLowerCase().includes(texto) ||
+      (veh && (veh.placa.toLowerCase().includes(texto) || veh.marca.toLowerCase().includes(texto) || veh.modelo.toLowerCase().includes(texto)))
+    );
+  });
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
@@ -381,7 +396,7 @@ export default function App() {
           {/* TAB: ORDENES DE TRABAJO */}
           {activeTab === 'ordenes' && (
             <div className="space-y-6">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                   <h2 className="text-2xl font-bold text-white">Órdenes de Trabajo</h2>
                   <p className="text-sm text-slate-400">Control de estado, diagnósticos y asignación de repuestos</p>
@@ -395,54 +410,72 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
-                {ordenes.map(o => {
-                  const veh = vehiculos.find(v => v.id === o.vehiculoId);
-                  const cli = clientes.find(c => c.id === veh?.clienteId);
-                  return (
-                    <div key={o.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-amber-400 font-mono font-bold text-lg">#OT-{o.id}</span>
-                          <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                            o.estado === 'Recepción' ? 'bg-blue-500/10 text-blue-400' :
-                            o.estado === 'En Proceso' ? 'bg-amber-500/10 text-amber-400' :
-                            'bg-emerald-500/10 text-emerald-400'
-                          }`}>
-                            {o.estado}
-                          </span>
-                          <span className="text-xs text-slate-400">Ingreso: {o.fechaIngreso}</span>
-                        </div>
-                        <div>
-                          <p className="text-white font-medium text-base">
-                            {veh ? `${veh.marca} ${veh.modelo} - Placa: ${veh.placa}` : 'Vehículo no encontrado'} 
-                            <span className="text-slate-400 text-sm ml-2">({cli ? cli.nombre : 'Cliente sin asignar'})</span>
-                          </p>
-                          <p className="text-slate-300 text-sm mt-1"><strong className="text-slate-400">Diagnóstico:</strong> {o.diagnostico}</p>
-                          <p className="text-slate-400 text-xs mt-1">Mecánico asignado: <strong className="text-white">{o.mecanico}</strong></p>
-                        </div>
-                      </div>
+              {/* Barra de búsqueda de historial de órdenes */}
+              <div className="relative">
+                <Search className="w-5 h-5 text-slate-400 absolute left-4 top-3.5" />
+                <input 
+                  type="text" 
+                  value={busquedaOrden}
+                  onChange={(e) => setBusquedaOrden(e.target.value)}
+                  placeholder="Buscar por # OT, placa, mecánico o diagnóstico..."
+                  className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3 text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+                />
+              </div>
 
-                      <div className="flex flex-col md:items-end space-y-3 w-full md:w-auto">
-                        <div className="text-right">
-                          <span className="text-xs text-slate-400">Total Estimado</span>
-                          <p className="text-xl font-bold text-white">${calcularTotalOrden(o.items)}</p>
+              <div className="grid grid-cols-1 gap-4">
+                {ordenesFiltradas.length > 0 ? (
+                  ordenesFiltradas.map(o => {
+                    const veh = vehiculos.find(v => v.id === o.vehiculoId);
+                    const cli = clientes.find(c => c.id === veh?.clienteId);
+                    return (
+                      <div key={o.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0">
+                        <div className="space-y-2">
+                          <div className="flex items-center space-x-3">
+                            <span className="text-amber-400 font-mono font-bold text-lg">#OT-{o.id}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                              o.estado === 'Recepción' ? 'bg-blue-500/10 text-blue-400' :
+                              o.estado === 'En Proceso' ? 'bg-amber-500/10 text-amber-400' :
+                              'bg-emerald-500/10 text-emerald-400'
+                            }`}>
+                              {o.estado}
+                            </span>
+                            <span className="text-xs text-slate-400">Ingreso: {o.fechaIngreso}</span>
+                          </div>
+                          <div>
+                            <p className="text-white font-medium text-base">
+                              {veh ? `${veh.marca} ${veh.modelo} - Placa: ${veh.placa}` : 'Vehículo no encontrado'} 
+                              <span className="text-slate-400 text-sm ml-2">({cli ? cli.nombre : 'Cliente sin asignar'})</span>
+                            </p>
+                            <p className="text-slate-300 text-sm mt-1"><strong className="text-slate-400">Diagnóstico:</strong> {o.diagnostico}</p>
+                            <p className="text-slate-400 text-xs mt-1">Mecánico asignado: <strong className="text-white">{o.mecanico}</strong></p>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <select 
-                            value={o.estado} 
-                            onChange={(e) => cambiarEstadoOrden(o.id, e.target.value)}
-                            className="bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
-                          >
-                            <option value="Recepción">Recepción</option>
-                            <option value="En Proceso">En Proceso</option>
-                            <option value="Finalizado">Finalizado</option>
-                          </select>
+
+                        <div className="flex flex-col md:items-end space-y-3 w-full md:w-auto">
+                          <div className="text-right">
+                            <span className="text-xs text-slate-400">Total Estimado</span>
+                            <p className="text-xl font-bold text-white">${calcularTotalOrden(o.items)}</p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <select 
+                              value={o.estado} 
+                              onChange={(e) => cambiarEstadoOrden(o.id, e.target.value)}
+                              className="bg-slate-700 border border-slate-600 text-white rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            >
+                              <option value="Recepción">Recepción</option>
+                              <option value="En Proceso">En Proceso</option>
+                              <option value="Finalizado">Finalizado</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                ) : (
+                  <div className="text-center py-12 text-slate-500 bg-slate-800/40 rounded-2xl border border-slate-800">
+                    No se encontraron órdenes de trabajo que coincidan con la búsqueda.
+                  </div>
+                )}
               </div>
             </div>
           )}
